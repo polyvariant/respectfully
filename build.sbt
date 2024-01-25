@@ -32,6 +32,7 @@ val commonSettings = Seq(
   scalacOptions ++= Seq(
     "-Wunused:all"
   ),
+  Test / fork := true,
 )
 
 lazy val core = project
