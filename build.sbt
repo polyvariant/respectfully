@@ -1,9 +1,9 @@
 ThisBuild / tlBaseVersion := "0.1"
 ThisBuild / organization := "org.polyvariant"
 ThisBuild / organizationName := "Polyvariant"
-ThisBuild / startYear := Some(2022)
+ThisBuild / startYear := Some(2024)
 ThisBuild / licenses := Seq(License.Apache2)
-ThisBuild / developers := List( /* tlGitHubDev() */ )
+ThisBuild / developers := List(tlGitHubDev("kubukoz", "Jakub Kozłowski"))
 ThisBuild / tlSonatypeUseLegacyHost := false
 
 def crossPlugin(x: sbt.librarymanagement.ModuleID) = compilerPlugin(x.cross(CrossVersion.full))
@@ -12,29 +12,31 @@ val compilerPlugins = List(
   crossPlugin("org.polyvariant" % "better-tostring" % "0.3.17")
 )
 
-val Scala213 = "2.13.8"
+val Scala3 = "3.3.1"
 
-ThisBuild / scalaVersion := Scala213
-
-Global / onChangedBuildSource := ReloadOnSourceChanges
+ThisBuild / scalaVersion := Scala3
 
 ThisBuild / tlFatalWarnings := false
 ThisBuild / tlFatalWarningsInCi := false
 
 val commonSettings = Seq(
-  libraryDependencies ++= compilerPlugins
+  libraryDependencies ++=
+    List(
+    ) ++
+      compilerPlugins,
+  scalacOptions ++= Seq(
+    "-Wunused:all"
+  ),
+  Test / fork := true,
 )
 
 lazy val core = project
   .settings(
-    name := "todo-core",
+    name := "respectfully",
     commonSettings,
   )
 
 lazy val root = project
   .in(file("."))
   .aggregate(core)
-  .settings(
-    Compile / doc / sources := Seq()
-  )
   .enablePlugins(NoPublishPlugin)
