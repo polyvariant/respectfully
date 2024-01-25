@@ -120,11 +120,13 @@ object API {
                 case '[t] =>
                   Expr(meth.name) -> '{ (input: Any) =>
                     ${
+                      //format: off
                       algExpr
                         .asTerm
                         .select(meth)
                         .appliedTo('{ input.asInstanceOf[t] }.asTerm)
                         .asExprOf[IO[Any]]
+                      //format: on
                     }
                   }
               }
