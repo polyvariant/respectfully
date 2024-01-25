@@ -17,29 +17,24 @@
 package respectfully
 
 import cats.effect.IO
-import cats.effect.IOApp
 import cats.implicits._
 import io.circe.Codec
 import io.circe.Decoder
 import io.circe.Encoder
 import io.circe.Json
-import io.circe.syntax._
 import org.http4s.Header
 import org.http4s.HttpApp
-import org.http4s.HttpRoutes
 import org.http4s.Method
 import org.http4s.Request
 import org.http4s.Response
 import org.http4s.Uri
 import org.http4s.circe.CirceEntityCodec._
 import org.http4s.client.Client
-import org.http4s.implicits._
 import org.typelevel.ci.CIString
 
 import scala.annotation.experimental
 import scala.compiletime.summonInline
 import scala.quoted.Expr
-import scala.quoted.FromExpr
 import scala.quoted.Quotes
 import scala.quoted.ToExpr
 import scala.quoted.Type
