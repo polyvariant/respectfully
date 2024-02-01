@@ -24,12 +24,14 @@ val commonSettings = Seq(
       "org.http4s" %%% "http4s-client" % "0.23.25",
       "org.http4s" %%% "http4s-circe" % "0.23.25",
       "com.kubukoz" %% "debug-utils" % "1.1.3",
+      "org.typelevel" %%% "kittens" % "3.2.0" % Test,
+      "com.disneystreaming" %%% "weaver-cats" % "0.8.4" % Test,
+      "com.disneystreaming" %%% "weaver-scalacheck" % "0.8.4" % Test,
     ) ++
       compilerPlugins,
   scalacOptions ++= Seq(
     "-Wunused:all"
   ),
-  Test / fork := true,
 )
 
 lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
@@ -37,6 +39,9 @@ lazy val core = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   .settings(
     name := "respectfully",
     commonSettings,
+  )
+  .jvmSettings(
+    Test / fork := true
   )
 
 lazy val example = crossProject(JVMPlatform, JSPlatform, NativePlatform)

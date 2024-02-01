@@ -91,6 +91,18 @@ object API {
                 summonInline[Encoder[t]],
               )
             }
+          case other =>
+            val typeStr =
+              TypeRepr
+                .of(
+                  using other
+                )
+                .show
+
+            report.errorAndAbort(
+              s"Only methods returning IO are supported. Found: $typeStr",
+              meth.pos.getOrElse(Position.ofMacroExpansion),
+            )
         }
 
       '{
@@ -267,7 +279,13 @@ object API {
           val implFunction = asFunction(impl)
 
           HttpApp { req =>
-            val methodName: String = req.headers.get(CIString("X-Method")).get.head.value
+            val methodName: String =
+              req
+                .headers
+                .get(CIString("X-Method"))
+                .getOrElse(sys.error("missing X-Method header"))
+                .head
+                .value
             req
               .as[Json]
               .flatMap { input =>
