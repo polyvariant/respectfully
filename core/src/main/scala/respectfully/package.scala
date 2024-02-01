@@ -157,7 +157,7 @@ object API {
     '{ API.instance[Alg](${ Expr.ofList(endpoints) }, ${ asFunction }, ${ fromFunction }) }
   }
 
-  def proxy[Trait: Type](using Quotes)(asf: Expr[AsFunction]) = {
+  private def proxy[Trait: Type](using Quotes)(asf: Expr[AsFunction]) = {
     import quotes.reflect.*
     val parents = List(TypeTree.of[Object], TypeTree.of[Trait])
 
@@ -233,7 +233,7 @@ object API {
     Block(List(clsDef), newCls)
   }
 
-  def instance[Alg](
+  private def instance[Alg](
     endpoints: List[Endpoint[?, ?]],
     asFunction: Alg => AsFunction,
     fromFunction: AsFunction => Alg,
@@ -283,7 +283,7 @@ object API {
 
     }
 
-  case class Endpoint[In_, Out_](
+  private case class Endpoint[In_, Out_](
     name: String,
     input: Codec[In_],
     output: Codec[Out_],
@@ -292,7 +292,7 @@ object API {
     type Out = Out_
   }
 
-  trait AsFunction {
+  private trait AsFunction {
     def apply[In, Out](endpointName: String, in: In): IO[Out]
   }
 
