@@ -29,7 +29,6 @@ import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
 import io.chrisdavenport.crossplatformioapp.CrossPlatformIOApp
 
-@annotation.experimental
 object Demo extends CrossPlatformIOApp.Simple {
 
   case class User(id: Int, name: String, age: Int) derives Codec.AsObject
