@@ -55,12 +55,13 @@ lazy val example = crossProject(JVMPlatform, JSPlatform, NativePlatform)
       "org.http4s" %%% "http4s-ember-server" % "0.23.25",
       "io.chrisdavenport" %%% "crossplatformioapp" % "0.1.0",
     ),
-    Compile / fork := true,
   )
   .jsSettings(
     scalaJSUseMainModuleInitializer := true,
     scalaJSLinkerConfig ~= (_.withModuleKind(ModuleKind.CommonJSModule)),
-    Test / fork := false,
+  )
+  .jvmSettings(
+    Compile / fork := true
   )
   .nativeSettings(
     libraryDependencies ++= Seq(
