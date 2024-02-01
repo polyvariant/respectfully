@@ -32,7 +32,6 @@ import org.http4s.circe.CirceEntityCodec._
 import org.http4s.client.Client
 import org.typelevel.ci.CIString
 
-import scala.annotation.experimental
 import scala.compiletime.summonInline
 import scala.quoted.Expr
 import scala.quoted.Quotes
@@ -46,11 +45,11 @@ trait API[Alg] {
 }
 
 object API {
+
   def apply[Alg](using api: API[Alg]): API[Alg] = api
-  @annotation.experimental
+
   inline def derived[Alg]: API[Alg] = ${ derivedImpl[Alg] }
 
-  @annotation.experimental
   private def derivedImpl[Alg: Type](using Quotes): Expr[API[Alg]] = {
     import quotes.reflect.{TypeRepr, report, DefDef, Position, asTerm}
 
@@ -158,7 +157,6 @@ object API {
     '{ API.instance[Alg](${ Expr.ofList(endpoints) }, ${ asFunction }, ${ fromFunction }) }
   }
 
-  @experimental
   def proxy[Trait: Type](using Quotes)(asf: Expr[AsFunction]) = {
     import quotes.reflect.*
     val parents = List(TypeTree.of[Object], TypeTree.of[Trait])
@@ -177,13 +175,21 @@ object API {
       )
     }
 
-    val cls = Symbol.newClass(
-      Symbol.spliceOwner,
-      "Anon",
-      parents.map(_.tpe),
-      decls,
-      selfType = None,
-    )
+    // The definition is experimental and I didn't want to bother.
+    // If it breaks in 3.4, so be it ;)
+    val cls = classOf[SymbolModule]
+      .getDeclaredMethods()
+      .filter(_.getName == "newClass")
+      .head
+      .invoke(
+        Symbol,
+        Symbol.spliceOwner,
+        "Anon",
+        parents.map(_.tpe),
+        decls,
+        None,
+      )
+      .asInstanceOf[Symbol]
 
     val body: List[DefDef] = cls.declaredMethods.map { sym =>
       def undefinedTerm(args: List[List[Tree]]) = {
@@ -201,7 +207,20 @@ object API {
 
       DefDef(sym, args => Some(undefinedTerm(args)))
     }
-    val clsDef = ClassDef(cls, parents, body = body)
+
+    // The definition is experimental and I didn't want to bother.
+    // If it breaks in 3.4, so be it ;)
+    val clsDef = classOf[ClassDefModule]
+      .getDeclaredMethods()
+      .filter(_.getName == "apply")
+      .head
+      .invoke(
+        ClassDef,
+        cls,
+        parents,
+        body,
+      )
+      .asInstanceOf[ClassDef]
 
     val newCls = Typed(
       Apply(
