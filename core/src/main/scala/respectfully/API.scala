@@ -60,11 +60,9 @@ object API {
         "Only methods with one parameter list are supported, got: " + meth.paramSymss + " for " + meth.name,
       )
 
-      val inputCodec =
-        meth.paramSymss.head match {
-          case Nil => '{ Codec.from(Decoder[Unit], Encoder[Unit]) }
-
-          case one :: Nil => /* ok */
+      val inputCodec = combineCodecs {
+        meth.paramSymss.head.map { one =>
+          val codec =
             one.termRef.typeSymbol.typeRef.asType match {
               case '[t] =>
                 '{
@@ -74,13 +72,9 @@ object API {
                   )
                 }
             }
-
-          case _ =>
-            report.errorAndAbort(
-              "Only methods with one parameter are supported",
-              meth.pos.getOrElse(Position.ofMacroExpansion),
-            )
+          one.termRef.termSymbol.name -> codec
         }
+      }
 
       val outputCodec =
         meth.tree.asInstanceOf[DefDef].returnTpt.tpe.asType match {
@@ -114,52 +108,51 @@ object API {
       }
     }
 
-    def functionsFor(algExpr: Expr[Alg]): Expr[List[(String, Any => IO[Any])]] = Expr.ofList {
+    def functionsFor(algExpr: Expr[Alg]): Expr[List[(String, List[Any] => IO[Any])]] = Expr.ofList {
       algTpe
         .typeSymbol
         .declaredMethods
         .map { meth =>
-          meth.paramSymss.head match {
+          val selectMethod = algExpr.asTerm.select(meth)
+
+          Expr(meth.name) -> meth.paramSymss.head.match {
             case Nil =>
               // special-case: nullary method
-              Expr(meth.name) -> '{ (_: Any) =>
-                ${ algExpr.asTerm.select(meth).appliedToNone.asExprOf[IO[Any]] }
-              }
+              '{ Function.const(${ selectMethod.appliedToNone.asExprOf[IO[Any]] }) }
 
-            case sym :: Nil =>
-              sym.termRef.typeSymbol.typeRef.asType match {
-                case '[t] =>
-                  Expr(meth.name) -> '{ (input: Any) =>
-                    ${
-                      //format: off
-                      algExpr
-                        .asTerm
-                        .select(meth)
-                        .appliedTo('{ input.asInstanceOf[t] }.asTerm)
-                        .asExprOf[IO[Any]]
-                      //format: on
-                    }
-                  }
-              }
             case _ =>
-              report.errorAndAbort(
-                "Only methods with one parameter are supported",
-                meth.pos.getOrElse(Position.ofMacroExpansion),
-              )
-          }
+              val types = meth.paramSymss.head.map(_.termRef.typeSymbol.typeRef.asType)
 
+              '{ (input: List[Any]) =>
+                ${
+                  selectMethod
+                    .appliedToArgs {
+                      types
+                        .zipWithIndex
+                        .map { (tpe, idx) =>
+                          tpe match {
+                            case '[t] => '{ input(${ Expr(idx) }).asInstanceOf[t] }.asTerm
+                          }
+                        }
+                        .toList
+                    }
+                    .asExprOf[IO[Any]]
+                }
+              }
+          }
         }
         .map(Expr.ofTuple(_))
     }
 
     val asFunction: Expr[Alg => AsFunction] =
       '{ (alg: Alg) =>
-        val functionsByName: Map[String, Any => IO[Any]] = ${ functionsFor('alg) }.toMap
+        val functionsByName: Map[String, List[Any] => IO[Any]] = ${ functionsFor('alg) }.toMap
         new AsFunction {
           def apply[In, Out](
             endpointName: String,
             in: In,
-          ): IO[Out] = functionsByName(endpointName)(in).asInstanceOf[IO[Out]]
+          ): IO[Out] = functionsByName(endpointName)(in.asInstanceOf[List[Any]])
+            .asInstanceOf[IO[Out]]
 
         }
       }
@@ -168,6 +161,33 @@ object API {
 
     '{ API.instance[Alg](${ Expr.ofList(endpoints) }, ${ asFunction }, ${ fromFunction }) }
   }
+
+  private inline def combineCodecs(
+    codecs: List[(String, Expr[Codec[?]])]
+  )(
+    using Quotes
+  ): Expr[Codec[List[Any]]] =
+    '{
+      combineCodecsRuntime(
+        ${
+          Expr.ofList {
+            codecs.map { case (k, v) => Expr.ofTuple((Expr(k), v)) }
+          }
+        }
+      )
+    }
+
+  private def combineCodecsRuntime(
+    codecs: List[(String, Codec[?])]
+  ): Codec[List[Any]] = Codec.from(
+    codecs.traverse { case (k, decoder) => decoder.at(k).widen },
+    input =>
+      Json.obj(
+        input.zip(codecs).map { case (param, (k, encoder)) =>
+          k -> encoder.asInstanceOf[Encoder[Any]](param)
+        }: _*
+      ),
+  )
 
   private def proxy[Trait: Type](using Quotes)(asf: Expr[AsFunction]) = {
     import quotes.reflect.*
@@ -204,20 +224,21 @@ object API {
       .asInstanceOf[Symbol]
 
     val body: List[DefDef] = cls.declaredMethods.map { sym =>
-      def undefinedTerm(args: List[List[Tree]]) = {
+      def impl(args: List[List[Tree]]) = {
         args.head match {
-          case Nil        => '{ ${ asf }.apply(${ Expr(sym.name) }, ()) }
-          case one :: Nil => '{ ${ asf }.apply(${ Expr(sym.name) }, ${ one.asExprOf[Any] }) }
-          case _ =>
-            report.errorAndAbort(
-              "Only methods with one parameter are supported",
-              sym.pos.getOrElse(Position.ofMacroExpansion),
-            )
+          case Nil => '{ ${ asf }.apply(${ Expr(sym.name) }, Nil) }
+          case atLeastOne =>
+            '{
+              ${ asf }.apply(
+                ${ Expr(sym.name) },
+                ${ Expr.ofList(atLeastOne.map(_.asExprOf[Any])) },
+              )
+            }
         }
 
       }.asTerm
 
-      DefDef(sym, args => Some(undefinedTerm(args)))
+      DefDef(sym, args => Some(impl(args)))
     }
 
     // The definition is experimental and I didn't want to bother.

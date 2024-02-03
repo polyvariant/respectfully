@@ -35,6 +35,7 @@ import cats.effect.kernel.Ref
 import io.circe.Json
 import org.typelevel.vault.Key
 import cats.effect.SyncIO
+import cats.Show
 
 object ClientTests extends SimpleIOSuite {
 
@@ -67,8 +68,11 @@ object ClientTests extends SimpleIOSuite {
   private def methodHeader(req: Request[IO]): String =
     req.headers.get(CIString("X-Method")).get.head.value
 
-  private def bodyJsonDecode[A: Decoder](req: Request[IO]): A =
-    req.attributes.lookup(BodyJson).get.as[A].toTry.get
+  private def bodyJsonDecode[A: Decoder](
+    req: Request[IO]
+  )(
+    modDecoder: Decoder[A] => Decoder[A]
+  ): A = req.attributes.lookup(BodyJson).get.as[A](modDecoder(summon[Decoder[A]])).toTry.get
 
   test("one op") {
     trait SimpleApi derives API {
@@ -93,13 +97,13 @@ object ClientTests extends SimpleIOSuite {
       API[SimpleApi].toClient(client, uri).operation(42).map(assert.eql("output", _)) *>
         captured.map { req =>
           assert.eql("operation", methodHeader(req)) &&
-          assert.eql(42, bodyJsonDecode[Int](req))
+          assert.eql(42, bodyJsonDecode[Int](req)(_.at("a")))
         }
     }
   }
 
   test("one op with more complex param") {
-    case class Person(name: String, age: Int) derives Codec.AsObject, Eq
+    case class Person(name: String, age: Int) derives Codec.AsObject, Eq, Show
 
     trait SimpleApi derives API {
       def operation(a: Person): IO[Person]
@@ -112,7 +116,23 @@ object ClientTests extends SimpleIOSuite {
         .map(assert.eql(Person("John", 43), _)) *>
         captured.map { req =>
           assert.eql("operation", methodHeader(req)) &&
-          assert.eql(Person("John", 42), bodyJsonDecode[Person](req))
+          assert.eql(Person("John", 42), bodyJsonDecode[Person](req)(_.at("a")))
+        }
+    }
+  }
+
+  test("one op with two params") {
+
+    trait SimpleApi derives API {
+      def operation(a: Int, b: String): IO[String]
+    }
+
+    fakeClient("42 foo").flatMap { (client, uri, captured) =>
+      API[SimpleApi].toClient(client, uri).operation(42, "foo").map(assert.eql("42 foo", _)) *>
+        captured.map { req =>
+          assert.eql("operation", methodHeader(req)) &&
+          assert.eql(42, bodyJsonDecode[Int](req)(_.at("a"))) &&
+          assert.eql("foo", bodyJsonDecode[String](req)(_.at("b")))
         }
     }
   }
