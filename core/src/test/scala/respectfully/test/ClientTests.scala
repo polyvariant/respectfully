@@ -88,6 +88,20 @@ object ClientTests extends SimpleIOSuite {
     }
   }
 
+  test("one op without parameter lists") {
+    trait SimpleApi derives API {
+      def op: IO[Int]
+    }
+
+    fakeClient(42).flatMap { (client, uri, captured) =>
+      API[SimpleApi].toClient(client, uri).op.map(assert.eql(42, _)) *>
+        captured.map { req =>
+          assert.eql("op", methodHeader(req)) &&
+          succeed(bodyJsonDecode[Unit](req))
+        }
+    }
+  }
+
   test("one op with param") {
     trait SimpleApi derives API {
       def operation(a: Int): IO[String]

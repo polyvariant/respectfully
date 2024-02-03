@@ -70,6 +70,22 @@ object ServerTests extends SimpleIOSuite {
       .flatMap(assertSuccess(_, 42))
   }
 
+  test("one op without parameter lists") {
+    trait SimpleApi derives API {
+      def op: IO[Int]
+    }
+
+    val impl: SimpleApi =
+      new SimpleApi {
+        def op: IO[Int] = IO.pure(42)
+      }
+
+    API[SimpleApi]
+      .toRoutes(impl)
+      .run(request("op")(JsonObject.empty))
+      .flatMap(assertSuccess(_, 42))
+  }
+
   test("one op with param") {
     trait SimpleApi derives API {
       def operation(a: Int): IO[Int]
