@@ -25,12 +25,15 @@ import org.http4s.circe.CirceEntityCodec._
 import respectfully.API
 import weaver._
 import org.http4s.Status
-import cats.syntax.all.*
 import org.http4s.Response
 import io.circe.Decoder
 import cats.kernel.Eq
 import cats.derived._
 import io.circe.Codec
+import io.circe.syntax._
+import io.circe.Json
+import io.circe.JsonObject
+import cats.Show
 
 object ServerTests extends SimpleIOSuite {
   pureTest("no ops") {
@@ -38,10 +41,10 @@ object ServerTests extends SimpleIOSuite {
     success
   }
 
-  private def request[A: Encoder](
+  private def request(
     method: String
   )(
-    body: A
+    body: JsonObject
   ) = Request[IO](Method.POST)
     .withEntity(body)
     .withHeaders("X-Method" -> method)
@@ -63,7 +66,23 @@ object ServerTests extends SimpleIOSuite {
 
     API[SimpleApi]
       .toRoutes(impl)
-      .run(request("op")(()))
+      .run(request("op")(JsonObject.empty))
+      .flatMap(assertSuccess(_, 42))
+  }
+
+  test("one op without parameter lists") {
+    trait SimpleApi derives API {
+      def op: IO[Int]
+    }
+
+    val impl: SimpleApi =
+      new SimpleApi {
+        def op: IO[Int] = IO.pure(42)
+      }
+
+    API[SimpleApi]
+      .toRoutes(impl)
+      .run(request("op")(JsonObject.empty))
       .flatMap(assertSuccess(_, 42))
   }
 
@@ -76,12 +95,12 @@ object ServerTests extends SimpleIOSuite {
 
     API[SimpleApi]
       .toRoutes(impl)
-      .run(request("operation")(42))
+      .run(request("operation")(JsonObject("a" := 42)))
       .flatMap(assertSuccess(_, 43))
   }
 
   test("one op with more complex param") {
-    case class Person(name: String, age: Int) derives Codec.AsObject, Eq
+    case class Person(name: String, age: Int) derives Codec.AsObject, Eq, Show
 
     trait SimpleApi derives API {
       def operation(a: Person): IO[Person]
@@ -91,7 +110,38 @@ object ServerTests extends SimpleIOSuite {
 
     API[SimpleApi]
       .toRoutes(impl)
-      .run(request("operation")(Person("John", 42)))
+      .run(request("operation")(JsonObject("a" := Person("John", 42))))
       .flatMap(assertSuccess(_, Person("John", 43)))
+  }
+
+  test("two params") {
+
+    trait SimpleApi derives API {
+      def operation(a: Int, b: String): IO[String]
+    }
+
+    val impl: SimpleApi = (a, b) => IO.pure(s"$a $b")
+
+    API[SimpleApi]
+      .toRoutes(impl)
+      .run(request("operation")(JsonObject("a" := 42, "b" := "John")))
+      .flatMap(assertSuccess(_, "42 John"))
+  }
+
+  test("two parameter lists") {
+
+    trait SimpleApi derives API {
+      def operation(a: Int)(b: String): IO[String]
+    }
+
+    val impl: SimpleApi =
+      new SimpleApi {
+        def operation(a: Int)(b: String): IO[String] = IO.pure(s"$a $b")
+      }
+
+    API[SimpleApi]
+      .toRoutes(impl)
+      .run(request("operation")(JsonObject("a" := 42, "b" := "John")))
+      .flatMap(assertSuccess(_, "42 John"))
   }
 }
