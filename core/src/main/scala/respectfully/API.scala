@@ -61,54 +61,54 @@ object API {
           s"Methods with type parameters are not supported. `${meth.name}` has type parameters: ${typeParameters.map(_.name).mkString(", ")}"
         )
 
-    val inputCodec: Expr[Codec[List[List[Any]]]] = combineCodecs {
-      meth.paramSymss.map {
-        _.map { one =>
-          val codec =
-            one.termRef.typeSymbol.typeRef.asType match {
-              case '[t] =>
-                '{
-                  Codec.from(
-                    summonInline[Decoder[t]],
-                    summonInline[Encoder[t]],
-                  )
-                }
-            }
-          one.termRef.termSymbol.name -> codec
+      val inputCodec: Expr[Codec[List[List[Any]]]] = combineCodecs {
+        meth.paramSymss.map {
+          _.map { one =>
+            val codec =
+              one.termRef.typeSymbol.typeRef.asType match {
+                case '[t] =>
+                  '{
+                    Codec.from(
+                      summonInline[Decoder[t]],
+                      summonInline[Encoder[t]],
+                    )
+                  }
+              }
+            one.termRef.termSymbol.name -> codec
+          }
         }
       }
-    }
 
-    val outputCodec =
-      meth.tree.asInstanceOf[DefDef].returnTpt.tpe.asType match {
-        case '[IO[t]] =>
-          '{
-            Codec.from(
-              summonInline[Decoder[t]],
-              summonInline[Encoder[t]],
-            )
-          }
-        case other =>
-          val typeStr =
-            TypeRepr
-              .of(
-                using other
+      val outputCodec =
+        meth.tree.asInstanceOf[DefDef].returnTpt.tpe.asType match {
+          case '[IO[t]] =>
+            '{
+              Codec.from(
+                summonInline[Decoder[t]],
+                summonInline[Encoder[t]],
               )
-              .show
+            }
+          case other =>
+            val typeStr =
+              TypeRepr
+                .of(
+                  using other
+                )
+                .show
 
-          report.errorAndAbort(
-            s"Only methods returning IO are supported. Found: $typeStr",
-            meth.pos.getOrElse(Position.ofMacroExpansion),
-          )
+            report.errorAndAbort(
+              s"Only methods returning IO are supported. Found: $typeStr",
+              meth.pos.getOrElse(Position.ofMacroExpansion),
+            )
+        }
+
+      '{
+        Endpoint[Any, Any](
+          ${ Expr(meth.name) },
+          ${ inputCodec }.asInstanceOf[Codec[Any]],
+          ${ outputCodec }.asInstanceOf[Codec[Any]],
+        )
       }
-
-    '{
-      Endpoint[Any, Any](
-        ${ Expr(meth.name) },
-        ${ inputCodec }.asInstanceOf[Codec[Any]],
-        ${ outputCodec }.asInstanceOf[Codec[Any]],
-      )
-    }
     }
 
     def functionsFor(
