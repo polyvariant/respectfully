@@ -30,7 +30,8 @@ val commonSettings = Seq(
     ) ++
       compilerPlugins,
   scalacOptions ++= Seq(
-    "-Wunused:all"
+    "-Wunused:all",
+    "-no-indent",
   ),
 )
 

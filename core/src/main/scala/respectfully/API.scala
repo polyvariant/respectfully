@@ -46,11 +46,15 @@ trait API[Alg] {
 
 object API {
 
-  def apply[Alg](using api: API[Alg]): API[Alg] = api
+  def apply[Alg](
+    using api: API[Alg]
+  ): API[Alg] = api
 
   inline def derived[Alg]: API[Alg] = ${ derivedImpl[Alg] }
 
-  private def derivedImpl[Alg: Type](using Quotes): Expr[API[Alg]] = {
+  private def derivedImpl[Alg: Type](
+    using Quotes
+  ): Expr[API[Alg]] = {
     import quotes.reflect.{TypeRepr, report, DefDef, Position, asTerm}
 
     val algTpe = TypeRepr.of[Alg]
@@ -203,7 +207,11 @@ object API {
       ),
   )
 
-  private def proxy[Trait: Type](using Quotes)(asf: Expr[AsFunction]) = {
+  private def proxy[Trait: Type](
+    using Quotes
+  )(
+    asf: Expr[AsFunction]
+  ) = {
     import quotes.reflect.*
     val parents = List(TypeTree.of[Object], TypeTree.of[Trait])
 
@@ -317,7 +325,7 @@ object API {
           }
 
       override val toRoutes: Alg => HttpApp[IO] =
-        impl =>
+        impl => {
           val implFunction = asFunction(impl)
 
           HttpApp { req =>
@@ -340,6 +348,7 @@ object API {
               }
               .map(Response[IO]().withEntity(_))
           }
+        }
 
     }
 
