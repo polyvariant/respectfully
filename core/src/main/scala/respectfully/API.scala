@@ -40,8 +40,8 @@ import scala.quoted.Type
 import scala.quoted.quotes
 
 trait API[Alg] {
-  def toRoutes: Alg => HttpApp[IO]
-  def toClient: (Client[IO], Uri) => Alg
+  def toRoutes(impl: Alg): HttpApp[IO]
+  def toClient(client: Client[IO], uri: Uri): Alg
 }
 
 object API {
@@ -303,52 +303,49 @@ object API {
     new API[Alg] {
       private val endpointsByName = endpoints.groupBy(_.name).fmap(_.head)
 
-      override val toClient: (Client[IO], Uri) => Alg =
-        (c, uri) =>
-          fromFunction {
-            new AsFunction {
-              override def apply[In, Out](endpointName: String, in: In): IO[Out] = {
-                val e = endpointsByName(endpointName).asInstanceOf[Endpoint[In, Out]]
+      override def toClient(c: Client[IO], uri: Uri): Alg = fromFunction {
+        new AsFunction {
+          override def apply[In, Out](endpointName: String, in: In): IO[Out] = {
+            val e = endpointsByName(endpointName).asInstanceOf[Endpoint[In, Out]]
 
-                given Codec[e.Out] = e.output
+            given Codec[e.Out] = e.output
 
-                def write(
-                  methodName: String,
-                  input: Json,
-                ): Request[IO] = Request[IO](uri = uri, method = Method.POST)
-                  .withHeaders(Header.Raw(CIString("X-Method"), methodName))
-                  .withEntity(input)
+            def write(
+              methodName: String,
+              input: Json,
+            ): Request[IO] = Request[IO](uri = uri, method = Method.POST)
+              .withHeaders(Header.Raw(CIString("X-Method"), methodName))
+              .withEntity(input)
 
-                c.expect[e.Out](write(e.name, e.input.apply(in)))
-              }
-            }
-          }
-
-      override val toRoutes: Alg => HttpApp[IO] =
-        impl => {
-          val implFunction = asFunction(impl)
-
-          HttpApp { req =>
-            val methodName: String =
-              req
-                .headers
-                .get(CIString("X-Method"))
-                .getOrElse(sys.error("missing X-Method header"))
-                .head
-                .value
-            req
-              .as[Json]
-              .flatMap { input =>
-                val e = endpointsByName(methodName)
-
-                e.input
-                  .decodeJson(input)
-                  .liftTo[IO]
-                  .flatMap(implFunction.apply[e.In, e.Out](e.name, _).map(e.output.apply(_)))
-              }
-              .map(Response[IO]().withEntity(_))
+            c.expect[e.Out](write(e.name, e.input.apply(in)))
           }
         }
+      }
+
+      override def toRoutes(impl: Alg): HttpApp[IO] = {
+        val implFunction = asFunction(impl)
+
+        HttpApp { req =>
+          val methodName: String =
+            req
+              .headers
+              .get(CIString("X-Method"))
+              .getOrElse(sys.error("missing X-Method header"))
+              .head
+              .value
+          req
+            .as[Json]
+            .flatMap { input =>
+              val e = endpointsByName(methodName)
+
+              e.input
+                .decodeJson(input)
+                .liftTo[IO]
+                .flatMap(implFunction.apply[e.In, e.Out](e.name, _).map(e.output.apply(_)))
+            }
+            .map(Response[IO]().withEntity(_))
+        }
+      }
 
     }
 
