@@ -25,7 +25,6 @@ import org.http4s.circe.CirceEntityCodec._
 import respectfully.API
 import weaver._
 import org.http4s.Status
-import cats.syntax.all.*
 import org.http4s.Response
 import io.circe.Decoder
 import cats.kernel.Eq
@@ -106,6 +105,23 @@ object ServerTests extends SimpleIOSuite {
     }
 
     val impl: SimpleApi = (a, b) => IO.pure(s"$a $b")
+
+    API[SimpleApi]
+      .toRoutes(impl)
+      .run(request("operation")(JsonObject("a" := 42, "b" := "John")))
+      .flatMap(assertSuccess(_, "42 John"))
+  }
+
+  test("two parameter lists") {
+
+    trait SimpleApi derives API {
+      def operation(a: Int)(b: String): IO[String]
+    }
+
+    val impl: SimpleApi =
+      new SimpleApi {
+        def operation(a: Int)(b: String): IO[String] = IO.pure(s"$a $b")
+      }
 
     API[SimpleApi]
       .toRoutes(impl)

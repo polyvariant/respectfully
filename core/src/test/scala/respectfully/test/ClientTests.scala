@@ -137,4 +137,20 @@ object ClientTests extends SimpleIOSuite {
     }
   }
 
+  test("one op with two parameter lists") {
+
+    trait SimpleApi derives API {
+      def operation(a: Int)(b: String): IO[String]
+    }
+
+    fakeClient("42 foo").flatMap { (client, uri, captured) =>
+      API[SimpleApi].toClient(client, uri).operation(42)("foo").map(assert.eql("42 foo", _)) *>
+        captured.map { req =>
+          assert.eql("operation", methodHeader(req)) &&
+          assert.eql(42, bodyJsonDecode[Int](req)(_.at("a"))) &&
+          assert.eql("foo", bodyJsonDecode[String](req)(_.at("b")))
+        }
+    }
+  }
+
 }

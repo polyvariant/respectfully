@@ -55,13 +55,15 @@ object API {
 
     val algTpe = TypeRepr.of[Alg]
     val endpoints = algTpe.typeSymbol.declaredMethods.map { meth =>
-      require(
-        meth.paramSymss.size == 1,
-        "Only methods with one parameter list are supported, got: " + meth.paramSymss + " for " + meth.name,
-      )
+      val typeParameters = meth.paramSymss.flatten.filter(_.isTypeParam)
+      if (typeParameters.nonEmpty)
+        report.errorAndAbort(
+          s"Methods with type parameters are not supported. `${meth.name}` has type parameters: ${typeParameters.map(_.name).mkString(", ")}"
+        )
 
-      val inputCodec = combineCodecs {
-        meth.paramSymss.head.map { one =>
+    val inputCodec: Expr[Codec[List[List[Any]]]] = combineCodecs {
+      meth.paramSymss.map {
+        _.map { one =>
           val codec =
             one.termRef.typeSymbol.typeRef.asType match {
               case '[t] =>
@@ -75,63 +77,69 @@ object API {
           one.termRef.termSymbol.name -> codec
         }
       }
-
-      val outputCodec =
-        meth.tree.asInstanceOf[DefDef].returnTpt.tpe.asType match {
-          case '[IO[t]] =>
-            '{
-              Codec.from(
-                summonInline[Decoder[t]],
-                summonInline[Encoder[t]],
-              )
-            }
-          case other =>
-            val typeStr =
-              TypeRepr
-                .of(
-                  using other
-                )
-                .show
-
-            report.errorAndAbort(
-              s"Only methods returning IO are supported. Found: $typeStr",
-              meth.pos.getOrElse(Position.ofMacroExpansion),
-            )
-        }
-
-      '{
-        Endpoint[Any, Any](
-          ${ Expr(meth.name) },
-          ${ inputCodec }.asInstanceOf[Codec[Any]],
-          ${ outputCodec }.asInstanceOf[Codec[Any]],
-        )
-      }
     }
 
-    def functionsFor(algExpr: Expr[Alg]): Expr[List[(String, List[Any] => IO[Any])]] = Expr.ofList {
+    val outputCodec =
+      meth.tree.asInstanceOf[DefDef].returnTpt.tpe.asType match {
+        case '[IO[t]] =>
+          '{
+            Codec.from(
+              summonInline[Decoder[t]],
+              summonInline[Encoder[t]],
+            )
+          }
+        case other =>
+          val typeStr =
+            TypeRepr
+              .of(
+                using other
+              )
+              .show
+
+          report.errorAndAbort(
+            s"Only methods returning IO are supported. Found: $typeStr",
+            meth.pos.getOrElse(Position.ofMacroExpansion),
+          )
+      }
+
+    '{
+      Endpoint[Any, Any](
+        ${ Expr(meth.name) },
+        ${ inputCodec }.asInstanceOf[Codec[Any]],
+        ${ outputCodec }.asInstanceOf[Codec[Any]],
+      )
+    }
+    }
+
+    def functionsFor(
+      algExpr: Expr[Alg]
+    ): Expr[List[(String, List[List[Any]] => IO[Any])]] = Expr.ofList {
       algTpe
         .typeSymbol
         .declaredMethods
         .map { meth =>
           val selectMethod = algExpr.asTerm.select(meth)
 
-          Expr(meth.name) -> meth.paramSymss.head.match {
-            case Nil =>
-              // special-case: nullary method
+          Expr(meth.name) -> meth.paramSymss.match {
+            case Nil :: Nil =>
+              // special-case: nullary method (one, zero-parameter list)
               '{ Function.const(${ selectMethod.appliedToNone.asExprOf[IO[Any]] }) }
 
             case _ =>
-              val types = meth.paramSymss.head.map(_.termRef.typeSymbol.typeRef.asType)
+              val types = meth.paramSymss.map(_.map(_.termRef.typeSymbol.typeRef.asType))
 
-              '{ (input: List[Any]) =>
+              '{ (input: List[List[Any]]) =>
                 ${
                   selectMethod
-                    .appliedToArgs {
+                    .appliedToArgss {
                       types
                         .zipWithIndex
-                        .map { (tpe, idx) =>
-                          tpe match {
-                            case '[t] => '{ input(${ Expr(idx) }).asInstanceOf[t] }.asTerm
+                        .map { (tpeList, idx0) =>
+                          tpeList.zipWithIndex.map { (tpe, idx1) =>
+                            tpe match {
+                              case '[t] =>
+                                '{ input(${ Expr(idx0) })(${ Expr(idx1) }).asInstanceOf[t] }.asTerm
+                            }
                           }
                         }
                         .toList
@@ -146,12 +154,12 @@ object API {
 
     val asFunction: Expr[Alg => AsFunction] =
       '{ (alg: Alg) =>
-        val functionsByName: Map[String, List[Any] => IO[Any]] = ${ functionsFor('alg) }.toMap
+        val functionsByName: Map[String, List[List[Any]] => IO[Any]] = ${ functionsFor('alg) }.toMap
         new AsFunction {
           def apply[In, Out](
             endpointName: String,
             in: In,
-          ): IO[Out] = functionsByName(endpointName)(in.asInstanceOf[List[Any]])
+          ): IO[Out] = functionsByName(endpointName)(in.asInstanceOf[List[List[Any]]])
             .asInstanceOf[IO[Out]]
 
         }
@@ -163,28 +171,34 @@ object API {
   }
 
   private inline def combineCodecs(
-    codecs: List[(String, Expr[Codec[?]])]
+    codecss: List[List[(String, Expr[Codec[?]])]]
   )(
     using Quotes
-  ): Expr[Codec[List[Any]]] =
+  ): Expr[Codec[List[List[Any]]]] =
     '{
       combineCodecsRuntime(
         ${
           Expr.ofList {
-            codecs.map { case (k, v) => Expr.ofTuple((Expr(k), v)) }
+            codecss.map { codecs =>
+              Expr.ofList(
+                codecs.map { case (k, v) => Expr.ofTuple((Expr(k), v)) }
+              )
+            }
           }
         }
       )
     }
 
   private def combineCodecsRuntime(
-    codecs: List[(String, Codec[?])]
-  ): Codec[List[Any]] = Codec.from(
-    codecs.traverse { case (k, decoder) => decoder.at(k).widen },
-    input =>
+    codecss: List[List[(String, Codec[?])]]
+  ): Codec[List[List[Any]]] = Codec.from(
+    codecss.traverse(_.traverse { case (k, decoder) => decoder.at(k).widen }),
+    inputss =>
       Json.obj(
-        input.zip(codecs).map { case (param, (k, encoder)) =>
-          k -> encoder.asInstanceOf[Encoder[Any]](param)
+        inputss.zip(codecss).flatMap { (inputs, codecs) =>
+          inputs.zip(codecs).map { case (param, (k, encoder)) =>
+            k -> encoder.asInstanceOf[Encoder[Any]](param)
+          }
         }: _*
       ),
   )
@@ -224,21 +238,28 @@ object API {
       .asInstanceOf[Symbol]
 
     val body: List[DefDef] = cls.declaredMethods.map { sym =>
-      def impl(args: List[List[Tree]]) = {
-        args.head match {
-          case Nil => '{ ${ asf }.apply(${ Expr(sym.name) }, Nil) }
-          case atLeastOne =>
+      def impl(argss: List[List[Tree]]) = {
+        argss match {
+          case Nil :: Nil => '{ ${ asf }.apply(${ Expr(sym.name) }, Nil) }
+          case _ =>
             '{
               ${ asf }.apply(
-                ${ Expr(sym.name) },
-                ${ Expr.ofList(atLeastOne.map(_.asExprOf[Any])) },
+                endpointName = ${ Expr(sym.name) },
+                in =
+                  ${
+                    Expr.ofList(argss.map { argList =>
+                      Expr.ofList(
+                        argList.map(_.asExprOf[Any])
+                      )
+                    })
+                  },
               )
             }
         }
 
       }.asTerm
 
-      DefDef(sym, args => Some(impl(args)))
+      DefDef(sym, argss => Some(impl(argss)))
     }
 
     // The definition is experimental and I didn't want to bother.
