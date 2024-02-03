@@ -14,7 +14,7 @@ sbt:
 
 ```scala
 // %%% for JS/native
-"org.polyvariant" %% "respectfully" % version
+"org.polyvariant" %% "respectfully" % "version"
 ```
 
 scala-cli
