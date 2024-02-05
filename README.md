@@ -56,3 +56,11 @@ def client(http: org.http4s.Client[IO], baseUri: org.http4s.Uri): MyApi =
 ```
 
 You know what to do next: plug your routes into a server, or plug a backend into your client - and go home early.
+
+## Paying respects
+
+This library is mostly inspired by the following:
+
+- [autowire](https://github.com/lihaoyi/autowire) (it only supports synchronous or Future-returning methods, and not Scala 3 - at the moment)
+- [Udash RPC](https://guide.udash.io/rpc) (again, only `Future`, no `IO`, also no Scala Native at the moment)
+- [sloth](https://github.com/cornerman/sloth) (different design philosophy, but seems like a good library for solving the same problem)
