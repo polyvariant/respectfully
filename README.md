@@ -4,7 +4,7 @@ Respectfully, sometimes you want to just make that effin RPC call. You don't rea
 
 Pun intended.
 
-Does this sound like you? You've found the one library trully respectful of your time and energy. No-nonsense RPC is just around the corner!
+Does this sound like you? You've found the one library truly respectful of your time and energy. No-nonsense RPC is just around the corner!
 
 ## Setup
 
