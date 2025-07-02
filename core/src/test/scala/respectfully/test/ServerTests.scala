@@ -21,17 +21,16 @@ import io.circe.Encoder
 import org.http4s.Header
 import org.http4s.Method
 import org.http4s.Request
-import org.http4s.circe.CirceEntityCodec._
+import org.http4s.circe.CirceEntityCodec.*
 import respectfully.API
-import weaver._
+import weaver.*
 import org.http4s.Status
 import org.http4s.Response
 import io.circe.Decoder
 import cats.kernel.Eq
-import cats.derived._
+import cats.derived.*
 import io.circe.Codec
-import io.circe.syntax._
-import io.circe.Json
+import io.circe.syntax.*
 import io.circe.JsonObject
 import cats.Show
 

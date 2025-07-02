@@ -17,10 +17,11 @@
 package respectfully
 
 import cats.effect.IO
-import cats.implicits._
+import cats.syntax.all.*
 import io.circe.Codec
 import io.circe.Decoder
 import io.circe.Encoder
+import util.chaining.*
 import io.circe.Json
 import org.http4s.Header
 import org.http4s.HttpApp
@@ -28,7 +29,7 @@ import org.http4s.Method
 import org.http4s.Request
 import org.http4s.Response
 import org.http4s.Uri
-import org.http4s.circe.CirceEntityCodec._
+import org.http4s.circe.CirceEntityCodec.*
 import org.http4s.client.Client
 import org.typelevel.ci.CIString
 
@@ -203,7 +204,7 @@ object API {
           inputs.zip(codecs).map { case (param, (k, encoder)) =>
             k -> encoder.asInstanceOf[Encoder[Any]](param)
           }
-        }: _*
+        }*
       ),
   )
 
@@ -234,7 +235,15 @@ object API {
     val cls = classOf[SymbolModule]
       .getDeclaredMethods()
       .filter(_.getName == "newClass")
-      .head
+      .pipe { methods =>
+        methods
+          .find(_.getParameterCount() == 5)
+          .getOrElse(
+            sys.error(
+              "SymbolModule.newClass method with 5 parameters not found. Found: " + methods
+            )
+          )
+      }
       .invoke(
         Symbol,
         Symbol.spliceOwner,

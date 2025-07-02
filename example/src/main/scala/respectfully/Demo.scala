@@ -23,7 +23,7 @@ import io.circe.Encoder
 import org.http4s.HttpApp
 import org.http4s.Response
 import org.http4s.Uri
-import org.http4s.circe.CirceEntityCodec._
+import org.http4s.circe.CirceEntityCodec.*
 import org.http4s.client.Client
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
@@ -56,7 +56,7 @@ object Demo extends CrossPlatformIOApp.Simple {
 
   def client(c: Client[IO], base: Uri): Api = API[Api].toClient(c, base)
 
-  import com.comcast.ip4s._
+  import com.comcast.ip4s.*
 
   def run: IO[Unit] = EmberServerBuilder
     .default[IO]

@@ -28,8 +28,8 @@ scala-cli
 Define your interface and derive `API` for it:
 
 ```scala
-import respectfully._
-import cats.effect._
+import respectfully.*
+import cats.effect.*
 
 trait MyApi derives API {
   def send(s: String): IO[Unit]
