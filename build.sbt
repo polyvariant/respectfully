@@ -4,7 +4,6 @@ ThisBuild / organizationName := "Polyvariant"
 ThisBuild / startYear := Some(2024)
 ThisBuild / licenses := Seq(License.Apache2)
 ThisBuild / developers := List(tlGitHubDev("kubukoz", "Jakub Kozłowski"))
-ThisBuild / tlSonatypeUseLegacyHost := false
 
 def crossPlugin(x: sbt.librarymanagement.ModuleID) = compilerPlugin(x.cross(CrossVersion.full))
 
