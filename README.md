@@ -45,7 +45,7 @@ val impl = new MyApi {
   def receive(): IO[String] = IO.stub
 }
 
-val r: org.http4s.HttpApp[IO] = API[MyApi].toRoutes
+val r: org.http4s.HttpApp[IO] = API[MyApi].toRoutes(impl)
 ```
 
 or a client, given an http4s Client:
