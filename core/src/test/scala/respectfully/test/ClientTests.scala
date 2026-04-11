@@ -72,7 +72,16 @@ object ClientTests extends SimpleIOSuite {
     req: Request[IO]
   )(
     modDecoder: Decoder[A] => Decoder[A]
-  ): A = req.attributes.lookup(BodyJson).get.as[A](modDecoder(summon[Decoder[A]])).toTry.get
+  ): A =
+    req
+      .attributes
+      .lookup(BodyJson)
+      .get
+      .as[A](
+        using modDecoder(summon[Decoder[A]])
+      )
+      .toTry
+      .get
 
   test("one op") {
     trait SimpleApi derives API {
@@ -80,9 +89,9 @@ object ClientTests extends SimpleIOSuite {
     }
 
     fakeClient(42).flatMap { (client, uri, captured) =>
-      API[SimpleApi].toClient(client, uri).op().map(assert.eql(42, _)) *>
+      API[SimpleApi].toClient(client, uri).op().map(expect.eql(42, _)) *>
         captured.map { req =>
-          assert.eql("op", methodHeader(req)) &&
+          expect.eql("op", methodHeader(req)) &&
           succeed(bodyJsonDecode[Unit](req))
         }
     }
@@ -94,9 +103,9 @@ object ClientTests extends SimpleIOSuite {
     }
 
     fakeClient(42).flatMap { (client, uri, captured) =>
-      API[SimpleApi].toClient(client, uri).op.map(assert.eql(42, _)) *>
+      API[SimpleApi].toClient(client, uri).op.map(expect.eql(42, _)) *>
         captured.map { req =>
-          assert.eql("op", methodHeader(req)) &&
+          expect.eql("op", methodHeader(req)) &&
           succeed(bodyJsonDecode[Unit](req))
         }
     }
@@ -108,10 +117,10 @@ object ClientTests extends SimpleIOSuite {
     }
 
     fakeClient("output").flatMap { (client, uri, captured) =>
-      API[SimpleApi].toClient(client, uri).operation(42).map(assert.eql("output", _)) *>
+      API[SimpleApi].toClient(client, uri).operation(42).map(expect.eql("output", _)) *>
         captured.map { req =>
-          assert.eql("operation", methodHeader(req)) &&
-          assert.eql(42, bodyJsonDecode[Int](req)(_.at("a")))
+          expect.eql("operation", methodHeader(req)) &&
+          expect.eql(42, bodyJsonDecode[Int](req)(_.at("a")))
         }
     }
   }
@@ -127,10 +136,10 @@ object ClientTests extends SimpleIOSuite {
       API[SimpleApi]
         .toClient(client, uri)
         .operation(Person("John", 42))
-        .map(assert.eql(Person("John", 43), _)) *>
+        .map(expect.eql(Person("John", 43), _)) *>
         captured.map { req =>
-          assert.eql("operation", methodHeader(req)) &&
-          assert.eql(Person("John", 42), bodyJsonDecode[Person](req)(_.at("a")))
+          expect.eql("operation", methodHeader(req)) &&
+          expect.eql(Person("John", 42), bodyJsonDecode[Person](req)(_.at("a")))
         }
     }
   }
@@ -142,11 +151,11 @@ object ClientTests extends SimpleIOSuite {
     }
 
     fakeClient("42 foo").flatMap { (client, uri, captured) =>
-      API[SimpleApi].toClient(client, uri).operation(42, "foo").map(assert.eql("42 foo", _)) *>
+      API[SimpleApi].toClient(client, uri).operation(42, "foo").map(expect.eql("42 foo", _)) *>
         captured.map { req =>
-          assert.eql("operation", methodHeader(req)) &&
-          assert.eql(42, bodyJsonDecode[Int](req)(_.at("a"))) &&
-          assert.eql("foo", bodyJsonDecode[String](req)(_.at("b")))
+          expect.eql("operation", methodHeader(req)) &&
+          expect.eql(42, bodyJsonDecode[Int](req)(_.at("a"))) &&
+          expect.eql("foo", bodyJsonDecode[String](req)(_.at("b")))
         }
     }
   }
@@ -158,11 +167,11 @@ object ClientTests extends SimpleIOSuite {
     }
 
     fakeClient("42 foo").flatMap { (client, uri, captured) =>
-      API[SimpleApi].toClient(client, uri).operation(42)("foo").map(assert.eql("42 foo", _)) *>
+      API[SimpleApi].toClient(client, uri).operation(42)("foo").map(expect.eql("42 foo", _)) *>
         captured.map { req =>
-          assert.eql("operation", methodHeader(req)) &&
-          assert.eql(42, bodyJsonDecode[Int](req)(_.at("a"))) &&
-          assert.eql("foo", bodyJsonDecode[String](req)(_.at("b")))
+          expect.eql("operation", methodHeader(req)) &&
+          expect.eql(42, bodyJsonDecode[Int](req)(_.at("a"))) &&
+          expect.eql("foo", bodyJsonDecode[String](req)(_.at("b")))
         }
     }
   }

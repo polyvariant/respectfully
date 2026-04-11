@@ -4,6 +4,7 @@ ThisBuild / organizationName := "Polyvariant"
 ThisBuild / startYear := Some(2024)
 ThisBuild / licenses := Seq(License.Apache2)
 ThisBuild / developers := List(tlGitHubDev("kubukoz", "Jakub Kozłowski"))
+ThisBuild / tlJdkRelease := Some(17)
 
 def crossPlugin(x: sbt.librarymanagement.ModuleID) = compilerPlugin(x.cross(CrossVersion.full))
 
@@ -11,7 +12,7 @@ val compilerPlugins = List(
   crossPlugin("org.polyvariant" % "better-tostring" % "0.3.17")
 )
 
-val Scala3 = "3.3.5"
+val Scala3 = "3.8.3"
 
 ThisBuild / scalaVersion := Scala3
 
@@ -20,12 +21,12 @@ ThisBuild / tlFatalWarnings := false
 val commonSettings = Seq(
   libraryDependencies ++=
     List(
-      "org.http4s" %%% "http4s-client" % "0.23.25",
-      "org.http4s" %%% "http4s-circe" % "0.23.25",
+      "org.http4s" %%% "http4s-client" % "0.23.34",
+      "org.http4s" %%% "http4s-circe" % "0.23.34",
       "com.kubukoz" %% "debug-utils" % "1.1.3",
-      "org.typelevel" %%% "kittens" % "3.2.0" % Test,
-      "com.disneystreaming" %%% "weaver-cats" % "0.8.4" % Test,
-      "com.disneystreaming" %%% "weaver-scalacheck" % "0.8.4" % Test,
+      "org.typelevel" %%% "kittens" % "3.5.0" % Test,
+      "org.typelevel" %%% "weaver-cats" % "0.12.0" % Test,
+      "org.typelevel" %%% "weaver-scalacheck" % "0.12.0" % Test,
     ) ++
       compilerPlugins,
   scalacOptions ++= Seq(
@@ -51,9 +52,8 @@ lazy val example = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     name := "respectfully-example",
     commonSettings,
     libraryDependencies ++= Seq(
-      "org.http4s" %%% "http4s-ember-client" % "0.23.25",
-      "org.http4s" %%% "http4s-ember-server" % "0.23.25",
-      "io.chrisdavenport" %%% "crossplatformioapp" % "0.1.0",
+      "org.http4s" %%% "http4s-ember-client" % "0.23.34",
+      "org.http4s" %%% "http4s-ember-server" % "0.23.34",
     ),
   )
   .jsSettings(
@@ -62,11 +62,6 @@ lazy val example = crossProject(JVMPlatform, JSPlatform, NativePlatform)
   )
   .jvmSettings(
     Compile / fork := true
-  )
-  .nativeSettings(
-    libraryDependencies ++= Seq(
-      "com.armanbilge" %%% "epollcat" % "0.1.6"
-    )
   )
   .enablePlugins(NoPublishPlugin)
 

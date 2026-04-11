@@ -48,12 +48,12 @@ object ServerTests extends SimpleIOSuite {
     .withEntity(body)
     .withHeaders("X-Method" -> method)
 
-  private def assertSuccess[A: Decoder: Eq](
+  private def expectSuccess[A: Decoder: Eq](
     response: Response[IO],
     expected: A,
   ) = response.as[A].map { body =>
-    assert(response.status == Status.Ok) &&
-    assert.eql(expected, body)
+    expect(response.status == Status.Ok) &&
+    expect.eql(expected, body)
   }
 
   test("one op") {
@@ -66,7 +66,7 @@ object ServerTests extends SimpleIOSuite {
     API[SimpleApi]
       .toRoutes(impl)
       .run(request("op")(JsonObject.empty))
-      .flatMap(assertSuccess(_, 42))
+      .flatMap(expectSuccess(_, 42))
   }
 
   test("one op without parameter lists") {
@@ -82,7 +82,7 @@ object ServerTests extends SimpleIOSuite {
     API[SimpleApi]
       .toRoutes(impl)
       .run(request("op")(JsonObject.empty))
-      .flatMap(assertSuccess(_, 42))
+      .flatMap(expectSuccess(_, 42))
   }
 
   test("one op with param") {
@@ -95,7 +95,7 @@ object ServerTests extends SimpleIOSuite {
     API[SimpleApi]
       .toRoutes(impl)
       .run(request("operation")(JsonObject("a" := 42)))
-      .flatMap(assertSuccess(_, 43))
+      .flatMap(expectSuccess(_, 43))
   }
 
   test("one op with more complex param") {
@@ -110,7 +110,7 @@ object ServerTests extends SimpleIOSuite {
     API[SimpleApi]
       .toRoutes(impl)
       .run(request("operation")(JsonObject("a" := Person("John", 42))))
-      .flatMap(assertSuccess(_, Person("John", 43)))
+      .flatMap(expectSuccess(_, Person("John", 43)))
   }
 
   test("two params") {
@@ -124,7 +124,7 @@ object ServerTests extends SimpleIOSuite {
     API[SimpleApi]
       .toRoutes(impl)
       .run(request("operation")(JsonObject("a" := 42, "b" := "John")))
-      .flatMap(assertSuccess(_, "42 John"))
+      .flatMap(expectSuccess(_, "42 John"))
   }
 
   test("two parameter lists") {
@@ -141,6 +141,6 @@ object ServerTests extends SimpleIOSuite {
     API[SimpleApi]
       .toRoutes(impl)
       .run(request("operation")(JsonObject("a" := 42, "b" := "John")))
-      .flatMap(assertSuccess(_, "42 John"))
+      .flatMap(expectSuccess(_, "42 John"))
   }
 }

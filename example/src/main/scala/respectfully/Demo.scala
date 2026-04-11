@@ -17,19 +17,17 @@
 package respectfully
 
 import cats.effect.IO
+import cats.effect.IOApp
 import io.circe.Codec
 import io.circe.Decoder
 import io.circe.Encoder
 import org.http4s.HttpApp
-import org.http4s.Response
 import org.http4s.Uri
-import org.http4s.circe.CirceEntityCodec.*
 import org.http4s.client.Client
 import org.http4s.ember.client.EmberClientBuilder
 import org.http4s.ember.server.EmberServerBuilder
-import io.chrisdavenport.crossplatformioapp.CrossPlatformIOApp
 
-object Demo extends CrossPlatformIOApp.Simple {
+object Demo extends IOApp.Simple {
 
   case class User(id: Int, name: String, age: Int) derives Codec.AsObject
 
