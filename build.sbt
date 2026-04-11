@@ -18,6 +18,8 @@ ThisBuild / scalaVersion := Scala3
 
 ThisBuild / tlFatalWarnings := false
 
+ThisBuild / mergifyStewardConfig ~= (_.map(_.withMergeMinors(true)))
+
 val commonSettings = Seq(
   libraryDependencies ++=
     List(
