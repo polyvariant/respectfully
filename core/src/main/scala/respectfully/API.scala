@@ -110,8 +110,8 @@ object API {
       '{
         Endpoint[Any, Any](
           ${ Expr(meth.name) },
-          ${ inputCodec }.asInstanceOf[Codec[Any]],
-          ${ outputCodec }.asInstanceOf[Codec[Any]],
+          $inputCodec.asInstanceOf[Codec[Any]],
+          $outputCodec.asInstanceOf[Codec[Any]],
         )
       }
     }
@@ -172,7 +172,7 @@ object API {
 
     val fromFunction: Expr[AsFunction => Alg] = '{ asf => ${ proxy[Alg]('asf).asExprOf[Alg] } }
 
-    '{ API.instance[Alg](${ Expr.ofList(endpoints) }, ${ asFunction }, ${ fromFunction }) }
+    '{ API.instance[Alg](${ Expr.ofList(endpoints) }, $asFunction, $fromFunction) }
   }
 
   private inline def combineCodecs(
@@ -257,10 +257,10 @@ object API {
     val body: List[DefDef] = cls.declaredMethods.map { sym =>
       def impl(argss: List[List[Tree]]) = {
         argss match {
-          case Nil :: Nil => '{ ${ asf }.apply(${ Expr(sym.name) }, Nil) }
-          case _ =>
+          case Nil :: Nil => '{ $asf.apply(${ Expr(sym.name) }, Nil) }
+          case _          =>
             '{
-              ${ asf }.apply(
+              $asf.apply(
                 endpointName = ${ Expr(sym.name) },
                 in =
                   ${
