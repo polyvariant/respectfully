@@ -27,8 +27,8 @@ val commonSettings = Seq(
       "org.http4s" %%% "http4s-circe" % "0.23.34",
       "com.kubukoz" %% "debug-utils" % "1.1.3",
       "org.typelevel" %%% "kittens" % "3.5.0" % Test,
-      "org.typelevel" %%% "weaver-cats" % "0.12.0" % Test,
-      "org.typelevel" %%% "weaver-scalacheck" % "0.12.0" % Test,
+      "org.typelevel" %%% "weaver-cats" % "0.13.0" % Test,
+      "org.typelevel" %%% "weaver-scalacheck" % "0.13.0" % Test,
     ) ++
       compilerPlugins,
   scalacOptions ++= Seq(
