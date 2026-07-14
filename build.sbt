@@ -23,8 +23,8 @@ ThisBuild / mergifyStewardConfig ~= (_.map(_.withMergeMinors(true)))
 val commonSettings = Seq(
   libraryDependencies ++=
     List(
-      "org.http4s" %%% "http4s-client" % "0.23.34",
-      "org.http4s" %%% "http4s-circe" % "0.23.34",
+      "org.http4s" %%% "http4s-client" % "0.23.35",
+      "org.http4s" %%% "http4s-circe" % "0.23.35",
       "com.kubukoz" %% "debug-utils" % "1.1.3",
       "org.typelevel" %%% "kittens" % "3.5.0" % Test,
       "org.typelevel" %%% "weaver-cats" % "0.13.0" % Test,
@@ -54,8 +54,8 @@ lazy val example = crossProject(JVMPlatform, JSPlatform, NativePlatform)
     name := "respectfully-example",
     commonSettings,
     libraryDependencies ++= Seq(
-      "org.http4s" %%% "http4s-ember-client" % "0.23.34",
-      "org.http4s" %%% "http4s-ember-server" % "0.23.34",
+      "org.http4s" %%% "http4s-ember-client" % "0.23.35",
+      "org.http4s" %%% "http4s-ember-server" % "0.23.35",
     ),
   )
   .jsSettings(
